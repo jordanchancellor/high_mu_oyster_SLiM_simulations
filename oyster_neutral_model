@@ -1,0 +1,65 @@
+//set up simulation parameters
+
+initialize() {
+	initializeSLiMModelType("nonWF"); //non WF model type
+	
+	defineConstant("simID", getSeed()); //use simID as a unique identifier and remember random number seed
+		
+	defineConstant("seed", getSeed());
+	
+//to recreate a successful run, replace getSeed() with the initial seed, and reload saved checkpoint in generation 1 using simreadFromPopulationFile()
+	
+	defineConstant("L", c(0.9, 0.2, 0.5, 0.5, 1.0)); //constant L and probability of mortality at each age 0-3 (market & harvest size)
+	
+	defineConstant("K", 500); //define carrying capacity
+	
+	defineConstant("sample", 18); //number of samples in vcf file at the end of the simulation
+	
+	initializeMutationRate(2.0e-5);
+	
+	initializeMutationType("m1", 0.5, "f", 0.0); //fixed neutral mutation
+	
+	initializeGenomicElementType("g1", m1, 1.0);
+	
+	initializeGenomicElement(g1, 0, 55800000); //one genomic element with chromosome length = C. gigas chromosome 1 length = 55.8mB = 58,800,000 bp (refernce genome from ncbi, Zhang et al, 2012)
+	
+	initializeRecombinationRate(5.4e-9); //(3.05 cM/ 560 Mb) estimated using recombination rate in Gagnaire et al. 2018 divided by pacific oyster genome size
+	
+	initializeSex("A"); //simulate separate sexes with a sex ratio default of 0.5
+}
+
+//generate offspring 
+
+reproduction(NULL, "F") { //generation of offspring with bi-parental mating, called once per individual, at the beginning of each generation
+	if (individual.age > 1) {
+		mate = subpop.sampleIndividuals(1, replace = T, sex="M", minAge=1);
+		//will draw one random individual as a mate for individuals older than age 1 (reproductive maturity)
+		subpop.addCrossed(individual, mate); //add new offspring to the population
+		litterSize = rexp(10e4, 1.5); //generate litters drawing from an exponential distribution with lambda = 1.5 where only a few indivuals have high reproductive success (estimated number of successful fertilizations for each spawning individual = 100,000)
+	}
+}
+
+//add initial population
+
+1 early() { //set initial population size, after generation 1 will vary over time by births/deaths
+	sim.addSubpop("p1", 1000);
+	p1.individuals.age = rdunif (1000, min=0, max=3); //random ages (0-3 years) from discrete uniform distribution
+	
+}
+
+//life table based age-related mortality
+
+early() {
+	inds = p1.individuals;
+	ages = inds.age;
+	mortality = L[ages];
+	survival = 1 - mortality; //survival-based fitness effect for each individual based on age
+	inds.fitnessScaling = survival;
+	p1.fitnessScaling = K / (p1.individualCount * mean(survival));
+	//density-dependent mortality factoring in survival rate due to age-related mortality
+}
+
+2000 late() {
+	a = p1.sampleIndividuals(sample).genomes;
+	a.outputVCF(filePath = "/scratch/jchancel/slim/outputs/highCC/" + "endoutput_simID_" + simID + ".vcf",append=F); //vcf output file for later calculations
+}
