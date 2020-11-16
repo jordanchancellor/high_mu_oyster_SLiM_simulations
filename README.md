@@ -1,1 +1,1 @@
-oyster_neutral_model  SLiM script for running a neutral model based on the oyster life cycle with life-tabel age-based mortality and highly variable reproduction in otder to investigate how high mutation rate affects the genomic landscape 
+SLiM script for running a neutral model based on the oyster life cycle with life-tabel age-based mortality and highly variable reproduction in otder to investigate how high mutation rate affects the genomic landscape 
